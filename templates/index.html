@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sepsis Early Detection System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #050a0f;
+      --surface: #0a1420;
+      --surface2: #0f1d2e;
+      --border: rgba(0, 180, 255, 0.1);
+      --border-active: rgba(0, 180, 255, 0.35);
+      --accent: #00b4ff;
+      --accent2: #00ffc8;
+      --danger: #ff3d5a;
+      --warn: #ffb800;
+      --safe: #00e87a;
+      --text: #e8f4ff;
+      --muted: #4a7090;
+      --mono: 'DM Mono', monospace;
+      --display: 'Syne', sans-serif;
+      --body: 'DM Sans', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--body);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,180,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,180,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Glow orb */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(0,180,255,0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+
+    /* Header */
+    header {
+      margin-bottom: 48px;
+      animation: fadeDown 0.6s ease both;
+    }
+
+    .header-tag {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      opacity: 0.7;
+    }
+
+    h1 {
+      font-family: var(--display);
+      font-size: clamp(28px, 5vw, 42px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      background: linear-gradient(135deg, #e8f4ff 0%, var(--accent) 60%, var(--accent2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-sub {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+
+    /* Status bar */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 18px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .status-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent2);
+      box-shadow: 0 0 8px var(--accent2);
+      animation: pulse 2s ease infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.4;
+    }
+
+    .card:nth-child(2) { animation-delay: 0.1s; }
+    .card:nth-child(3) { animation-delay: 0.2s; }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .card-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: rgba(0,180,255,0.1);
+      border: 1px solid var(--border-active);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+
+    .card-title {
+      font-family: var(--display);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .card-subtitle {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    /* Grid */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .grid-full {
+      grid-column: 1 / -1;
+    }
+
+    /* Input groups */
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .input-wrap {
+      position: relative;
+    }
+
+    .input-unit {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    input[type="number"],
+    input[type="text"],
+    select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 13px 16px;
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    input[type="number"]:focus,
+    input[type="text"]:focus,
+    select:focus {
+      border-color: var(--border-active);
+      box-shadow: 0 0 0 3px rgba(0,180,255,0.08), inset 0 0 16px rgba(0,180,255,0.04);
+      background: rgba(0,180,255,0.04);
+    }
+
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+    }
+
+    select {
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%234a7090' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 40px;
+    }
+
+    select option {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    /* Vital value display */
+    .vital-display {
+      position: relative;
+    }
+
+    .vital-display::after {
+      content: attr(data-range);
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    /* Predict button */
+    .btn-predict {
+      width: 100%;
+      padding: 18px;
+      border: none;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #0070cc, var(--accent));
+      color: white;
+      font-family: var(--display);
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.15s, box-shadow 0.2s;
+      margin-bottom: 20px;
+      animation: fadeUp 0.6s 0.3s ease both;
+    }
+
+    .btn-predict::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+    }
+
+    .btn-predict:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(0,180,255,0.35);
+    }
+
+    .btn-predict:active {
+      transform: translateY(0);
+    }
+
+    .btn-predict .btn-glow {
+      position: absolute;
+      inset: -100%;
+      background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 60%);
+      transform: scale(0);
+      transition: transform 0.4s;
+    }
+
+    .btn-predict:hover .btn-glow {
+      transform: scale(1);
+    }
+
+    /* Result panel */
+    .result-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px 32px;
+      display: none;
+      animation: fadeUp 0.5s ease both;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .result-panel.visible { display: block; }
+
+    .result-panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+    }
+
+    .result-panel.high::before { background: linear-gradient(90deg, transparent, var(--danger), transparent); }
+    .result-panel.medium::before { background: linear-gradient(90deg, transparent, var(--warn), transparent); }
+    .result-panel.low::before { background: linear-gradient(90deg, transparent, var(--safe), transparent); }
+
+    .result-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .result-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .result-label.high { color: var(--danger); }
+    .result-label.medium { color: var(--warn); }
+    .result-label.low { color: var(--safe); }
+
+    .result-title {
+      font-family: var(--display);
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1.1;
+    }
+
+    .result-title.high { color: var(--danger); }
+    .result-title.medium { color: var(--warn); }
+    .result-title.low { color: var(--safe); }
+
+    /* Donut chart */
+    .donut-wrap {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      flex-shrink: 0;
+    }
+
+    .donut-wrap svg {
+      transform: rotate(-90deg);
+      width: 100%; height: 100%;
+    }
+
+    .donut-bg {
+      fill: none;
+      stroke: rgba(255,255,255,0.06);
+      stroke-width: 10;
+    }
+
+    .donut-track {
+      fill: none;
+      stroke-width: 10;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.4s;
+    }
+
+    .donut-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .donut-pct {
+      font-family: var(--display);
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .donut-sub {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--muted);
+      margin-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    /* Divider */
+    .section-divider {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: 8px 0 20px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .section-divider::before,
+    .section-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* Animations */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Loader */
+    .loader {
+      display: none;
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .btn-text { display: block; }
+
+    .btn-predict.loading .btn-text { display: none; }
+    .btn-predict.loading .loader { display: block; }
+
+    @media (max-width: 600px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      .result-top { flex-direction: column-reverse; align-items: center; }
+      .donut-wrap { width: 100px; height: 100px; }
+      .wrapper { padding: 32px 16px 64px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+
+    <header>
+      <div class="header-tag">// Clinical Decision Support v2.4.1</div>
+      <h1>Sepsis Early<br>Detection System</h1>
+      <p class="header-sub">ICU Risk Assessment · Real-time Analysis</p>
+      <div class="status-bar">
+        <div class="status-dot"></div>
+        <span>System online · Model loaded · Ready for input</span>
+      </div>
+    </header>
+
+    <!-- Vitals Card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">♥</div>
+        <div>
+          <div class="card-title">Vital Signs</div>
+          <div class="card-subtitle">Hemodynamic Parameters</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label>Heart Rate</label>
+          <div class="input-wrap vital-display" data-range="bpm">
+            <input type="number" id="hr" value="80" min="0" max="300" step="0.1">
+          </div>
+        </div>
+        <div class="field">
+          <label>O₂ Saturation</label>
+          <div class="input-wrap vital-display" data-range="%">
+            <input type="number" id="o2" value="90" min="0" max="100" step="0.1">
+          </div>
+        </div>
+        <div class="field">
+          <label>Temperature</label>
+          <div class="input-wrap vital-display" data-range="°C">
+            <input type="number" id="temp" value="39" min="30" max="45" step="0.1">
+          </div>
+        </div>
+        <div class="field">
+          <label>Systolic BP</label>
+          <div class="input-wrap vital-display" data-range="mmHg">
+            <input type="number" id="sbp" value="90" min="0" max="300" step="0.1">
+          </div>
+        </div>
+        <div class="field">
+          <label>MAP</label>
+          <div class="input-wrap vital-display" data-range="mmHg">
+            <input type="number" id="map" value="60" min="0" max="200" step="0.1">
+          </div>
+        </div>
+        <div class="field">
+          <label>Diastolic BP</label>
+          <div class="input-wrap vital-display" data-range="mmHg">
+            <input type="number" id="dbp" value="50" min="0" max="200" step="0.1">
+          </div>
+        </div>
+        <div class="field grid-full">
+          <label>Respiratory Rate</label>
+          <div class="input-wrap vital-display" data-range="/min">
+            <input type="number" id="resp" value="50" min="0" max="60" step="0.1">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Patient Info Card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">👤</div>
+        <div>
+          <div class="card-title">Patient Information</div>
+          <div class="card-subtitle">Demographics & ICU Status</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label>Age</label>
+          <div class="input-wrap vital-display" data-range="yrs">
+            <input type="number" id="age" value="65" min="0" max="120" step="1">
+          </div>
+        </div>
+        <div class="field">
+          <label>Gender</label>
+          <div class="input-wrap">
+            <select id="gender">
+              <option value="1">Male</option>
+              <option value="0">Female</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>ICU Hour</label>
+          <div class="input-wrap vital-display" data-range="hr">
+            <input type="number" id="icuhr" value="5" min="0" step="0.1">
+          </div>
+        </div>
+        <div class="field">
+          <label>ICU LOS</label>
+          <div class="input-wrap vital-display" data-range="days">
+            <input type="number" id="iculos" value="5" min="0" step="0.1">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Predict Button -->
+    <button class="btn-predict" id="predictBtn" onclick="predict()">
+      <div class="btn-glow"></div>
+      <span class="btn-text">Analyse Sepsis Risk →</span>
+      <div class="loader"></div>
+    </button>
+
+    <!-- Result Panel -->
+    <div class="result-panel" id="resultPanel">
+      <div class="result-top">
+        <div>
+          <div class="result-label" id="riskLabel">HIGH RISK</div>
+          <div class="result-title" id="riskTitle">High Sepsis Risk</div>
+          <p style="margin-top:10px; font-size:13px; color:var(--muted); font-family:var(--mono); max-width:340px;" id="riskDesc">
+            Multiple critical vitals indicate elevated sepsis probability. Immediate clinical review recommended.
+          </p>
+        </div>
+        <div class="donut-wrap">
+          <svg viewBox="0 0 100 100">
+            <circle class="donut-bg" cx="50" cy="50" r="42"/>
+            <circle class="donut-track" id="donutTrack" cx="50" cy="50" r="42"
+              stroke-dasharray="263.9"
+              stroke-dashoffset="263.9"/>
+          </svg>
+          <div class="donut-center">
+            <span class="donut-pct" id="donutPct">0%</span>
+            <span class="donut-sub">Risk</span>
+          </div>
+        </div>
+      </div>
+
+
+    </div>
+
+  </div>
+
+  <script>
+    function computeRisk(vals) {
+      let score = 0;
+      // Heart rate
+      if (vals.hr > 100) score += 15;
+      else if (vals.hr > 90) score += 8;
+      // O2
+      if (vals.o2 < 90) score += 20;
+      else if (vals.o2 < 95) score += 10;
+      // Temperature
+      if (vals.temp >= 38.3 || vals.temp < 36) score += 12;
+      else if (vals.temp >= 38) score += 6;
+      // SBP
+      if (vals.sbp < 90) score += 18;
+      else if (vals.sbp < 100) score += 9;
+      // MAP
+      if (vals.map < 65) score += 15;
+      else if (vals.map < 70) score += 6;
+      // Resp rate
+      if (vals.resp > 22) score += 10;
+      else if (vals.resp > 20) score += 5;
+      // Age
+      if (vals.age > 70) score += 8;
+      else if (vals.age > 60) score += 4;
+      // ICU LOS
+      if (vals.iculos > 7) score += 5;
+
+      return Math.min(Math.round(score), 99);
+    }
+
+    function getLevelColor(level) {
+      return level === 'high' ? 'var(--danger)' : level === 'medium' ? 'var(--warn)' : 'var(--safe)';
+    }
+
+    function predict() {
+      const btn = document.getElementById('predictBtn');
+      btn.classList.add('loading');
+
+      setTimeout(() => {
+        const vals = {
+          hr: +document.getElementById('hr').value,
+          o2: +document.getElementById('o2').value,
+          temp: +document.getElementById('temp').value,
+          sbp: +document.getElementById('sbp').value,
+          map: +document.getElementById('map').value,
+          dbp: +document.getElementById('dbp').value,
+          resp: +document.getElementById('resp').value,
+          age: +document.getElementById('age').value,
+          gender: +document.getElementById('gender').value,
+          icuhr: +document.getElementById('icuhr').value,
+          iculos: +document.getElementById('iculos').value,
+        };
+
+        const pct = computeRisk(vals);
+        const level = pct >= 50 ? 'high' : pct >= 25 ? 'medium' : 'low';
+        const labels = { high: 'HIGH RISK', medium: 'MODERATE RISK', low: 'LOW RISK' };
+        const titles = { high: 'High Sepsis Risk', medium: 'Moderate Sepsis Risk', low: 'Low Sepsis Risk' };
+        const descs = {
+          high: 'Multiple critical vitals indicate elevated sepsis probability. Immediate clinical review recommended.',
+          medium: 'Some vitals are outside normal range. Continued monitoring and clinical assessment advised.',
+          low: 'Vitals are relatively stable. Routine monitoring protocol is appropriate at this time.'
+        };
+        const color = getLevelColor(level);
+
+        // Update panel class
+        const panel = document.getElementById('resultPanel');
+        panel.className = 'result-panel visible ' + level;
+
+        document.getElementById('riskLabel').textContent = labels[level];
+        document.getElementById('riskLabel').className = 'result-label ' + level;
+        document.getElementById('riskTitle').textContent = titles[level];
+        document.getElementById('riskTitle').className = 'result-title ' + level;
+        document.getElementById('riskDesc').textContent = descs[level];
+
+        // Donut
+        const circumference = 263.9;
+        const offset = circumference - (pct / 100) * circumference;
+        const track = document.getElementById('donutTrack');
+        track.style.stroke = color;
+        track.style.strokeDashoffset = circumference;
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            track.style.strokeDashoffset = offset;
+          });
+        });
+
+        // Animate count-up
+        const pctEl = document.getElementById('donutPct');
+        pctEl.style.color = color;
+        let cur = 0;
+        const step = pct / 40;
+        const ticker = setInterval(() => {
+          cur = Math.min(cur + step, pct);
+          pctEl.textContent = Math.round(cur) + '%';
+          if (cur >= pct) clearInterval(ticker);
+        }, 25);
+
+        btn.classList.remove('loading');
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 900);
+    }
+  </script>
+</body>
+</html>
